@@ -46,8 +46,8 @@ module jpeg_decoder
 //-----------------------------------------------------------------
 (
     // Inputs
-     input          clk_i
-    ,input          rst_i
+     input          clk
+    ,input          rst
     ,input          s_axil_awvalid
     ,input  [31:0]  s_axil_awaddr
     ,input          s_axil_wvalid
@@ -108,16 +108,16 @@ reg wvalid_q;
 wire wr_cmd_accepted_w  = (s_axil_awvalid && s_axil_awready) || awvalid_q;
 wire wr_data_accepted_w = (s_axil_wvalid  && s_axil_wready)  || wvalid_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     awvalid_q <= 1'b0;
 else if (s_axil_awvalid && s_axil_awready && !wr_data_accepted_w)
     awvalid_q <= 1'b1;
 else if (wr_data_accepted_w)
     awvalid_q <= 1'b0;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     wvalid_q <= 1'b0;
 else if (s_axil_wvalid && s_axil_wready && !wr_cmd_accepted_w)
     wvalid_q <= 1'b1;
@@ -129,8 +129,8 @@ else if (wr_cmd_accepted_w)
 //-----------------------------------------------------------------
 reg [7:0] wr_addr_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     wr_addr_q <= 8'b0;
 else if (s_axil_awvalid && s_axil_awready)
     wr_addr_q <= s_axil_awaddr[7:0];
@@ -142,8 +142,8 @@ wire [7:0] wr_addr_w = awvalid_q ? wr_addr_q : s_axil_awaddr[7:0];
 //-----------------------------------------------------------------
 reg [31:0] wr_data_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     wr_data_q <= 32'b0;
 else if (s_axil_wvalid && s_axil_wready)
     wr_data_q <= s_axil_wdata;
@@ -167,8 +167,8 @@ assign s_axil_wready  = ~s_axil_bvalid && ~s_axil_arvalid && ~wvalid_q;
 //-----------------------------------------------------------------
 reg jpeg_ctrl_wr_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     jpeg_ctrl_wr_q <= 1'b0;
 else if (write_en_w && (wr_addr_w[7:0] == `JPEG_CTRL))
     jpeg_ctrl_wr_q <= 1'b1;
@@ -178,8 +178,8 @@ else
 // jpeg_ctrl_start [auto_clr]
 reg        jpeg_ctrl_start_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     jpeg_ctrl_start_q <= 1'd`JPEG_CTRL_START_DEFAULT;
 else if (write_en_w && (wr_addr_w[7:0] == `JPEG_CTRL))
     jpeg_ctrl_start_q <= s_axil_wdata[`JPEG_CTRL_START_R];
@@ -192,8 +192,8 @@ wire        jpeg_ctrl_start_out_w = jpeg_ctrl_start_q;
 // jpeg_ctrl_abort [auto_clr]
 reg        jpeg_ctrl_abort_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     jpeg_ctrl_abort_q <= 1'd`JPEG_CTRL_ABORT_DEFAULT;
 else if (write_en_w && (wr_addr_w[7:0] == `JPEG_CTRL))
     jpeg_ctrl_abort_q <= s_axil_wdata[`JPEG_CTRL_ABORT_R];
@@ -206,8 +206,8 @@ wire        jpeg_ctrl_abort_out_w = jpeg_ctrl_abort_q;
 // jpeg_ctrl_length [internal]
 reg [23:0]  jpeg_ctrl_length_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     jpeg_ctrl_length_q <= 24'd`JPEG_CTRL_LENGTH_DEFAULT;
 else if (write_en_w && (wr_addr_w[7:0] == `JPEG_CTRL))
     jpeg_ctrl_length_q <= s_axil_wdata[`JPEG_CTRL_LENGTH_R];
@@ -220,8 +220,8 @@ wire [23:0]  jpeg_ctrl_length_out_w = jpeg_ctrl_length_q;
 //-----------------------------------------------------------------
 reg jpeg_status_wr_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     jpeg_status_wr_q <= 1'b0;
 else if (write_en_w && (wr_addr_w[7:0] == `JPEG_STATUS))
     jpeg_status_wr_q <= 1'b1;
@@ -234,8 +234,8 @@ else
 //-----------------------------------------------------------------
 reg jpeg_src_wr_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     jpeg_src_wr_q <= 1'b0;
 else if (write_en_w && (wr_addr_w[7:0] == `JPEG_SRC))
     jpeg_src_wr_q <= 1'b1;
@@ -245,8 +245,8 @@ else
 // jpeg_src_addr [internal]
 reg [31:0]  jpeg_src_addr_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     jpeg_src_addr_q <= 32'd`JPEG_SRC_ADDR_DEFAULT;
 else if (write_en_w && (wr_addr_w[7:0] == `JPEG_SRC))
     jpeg_src_addr_q <= s_axil_wdata[`JPEG_SRC_ADDR_R];
@@ -259,8 +259,8 @@ wire [31:0]  jpeg_src_addr_out_w = jpeg_src_addr_q;
 //-----------------------------------------------------------------
 reg jpeg_dst_wr_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     jpeg_dst_wr_q <= 1'b0;
 else if (write_en_w && (wr_addr_w[7:0] == `JPEG_DST))
     jpeg_dst_wr_q <= 1'b1;
@@ -270,8 +270,8 @@ else
 // jpeg_dst_addr [internal]
 reg [31:0]  jpeg_dst_addr_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     jpeg_dst_addr_q <= 32'd`JPEG_DST_ADDR_DEFAULT;
 else if (write_en_w && (wr_addr_w[7:0] == `JPEG_DST))
     jpeg_dst_addr_q <= s_axil_wdata[`JPEG_DST_ADDR_R];
@@ -319,8 +319,8 @@ end
 //-----------------------------------------------------------------
 reg rvalid_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     rvalid_q <= 1'b0;
 else if (read_en_w)
     rvalid_q <= 1'b1;
@@ -334,8 +334,8 @@ assign s_axil_rvalid = rvalid_q;
 //-----------------------------------------------------------------
 reg [31:0] rd_data_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     rd_data_q <= 32'b0;
 else if (!s_axil_rvalid || s_axil_rready)
     rd_data_q <= data_r;
@@ -348,8 +348,8 @@ assign s_axil_rresp = 2'b0;
 //-----------------------------------------------------------------
 reg bvalid_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     bvalid_q <= 1'b0;
 else if (write_en_w)
     bvalid_q <= 1'b1;
@@ -424,8 +424,8 @@ begin
         next_state_r = STATE_IDLE;
 end
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     state_q <= STATE_IDLE;
 else
     state_q <= next_state_r;
@@ -437,8 +437,8 @@ assign jpeg_status_busy_in_w = (state_q != STATE_IDLE);
 //-----------------------------------------------------------------
 reg  core_active_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     core_active_q  <= 1'b0;
 else if (state_q == STATE_IDLE && next_state_r == STATE_FILL)
     core_active_q  <= 1'b1;
@@ -448,8 +448,8 @@ else if (state_q == STATE_ACTIVE && next_state_r == STATE_DRAIN)
 //-----------------------------------------------------------------
 // Core busy
 //-----------------------------------------------------------------
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     core_busy_q  <= 1'b0;
 else if (state_q == STATE_ACTIVE && !core_idle_w)
     core_busy_q  <= 1'b1;
@@ -459,8 +459,8 @@ else if (state_q == STATE_ACTIVE && core_idle_w)
 //-----------------------------------------------------------------
 // FIFO allocation
 //-----------------------------------------------------------------
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     allocated_q  <= 16'b0;
 else if (jpeg_ctrl_abort_out_w || (state_q == STATE_DRAIN))
     allocated_q  <= 16'b0;
@@ -488,8 +488,8 @@ wire [31:0] remain_words_w   = {2'b0, remain_rounded_w[31:2]};
 wire [31:0] max_words_w      = (remain_words_w > BURST_LEN && (araddr_q & ((BURST_LEN*4)-1)) == 32'd0) ? BURST_LEN : 1;
 wire        fifo_space_w     = (BUFFER_DEPTH - allocated_q) > BURST_LEN;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     remaining_q <= 32'b0;
 else if (jpeg_ctrl_start_out_w)
     remaining_q <= {8'b0, jpeg_ctrl_length_out_w};
@@ -503,8 +503,8 @@ begin
         remaining_q <= 32'b0;
 end
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     arvalid_q <= 1'b0;
 else if (m_axi_arvalid && m_axi_arready)
     arvalid_q <= 1'b0;
@@ -513,8 +513,8 @@ else if (!m_axi_arvalid && fifo_space_w && remaining_q != 32'b0)
 
 assign m_axi_arvalid = arvalid_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     araddr_q <= 32'b0;
 else if (m_axi_arvalid && m_axi_arready)
     araddr_q  <= araddr_q + fetch_bytes_w;
@@ -523,8 +523,8 @@ else if (jpeg_ctrl_start_out_w)
 
 reg [7:0] arlen_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     arlen_q <= 8'b0;
 else
     arlen_q <= max_words_w - 1;
@@ -544,8 +544,8 @@ wire fifo_jpeg_valid_w;
 jpeg_decoder_input_fifo
 u_fifo_in
 (
-     .clk_i(clk_i)
-    ,.rst_i(rst_i)
+     .clk_i(clk)
+    ,.rst_i(rst)
 
     ,.flush_i(jpeg_ctrl_abort_out_w || (state_q == STATE_DRAIN))
 
@@ -581,7 +581,7 @@ wire        core_accept_w;
 jpeg_core
 u_core
 (
-     .clk_i(clk_i)
+     .clk_i(clk)
     ,.rst_i(~core_active_q)
 
     ,.inport_valid_i(jpeg_valid_w)
@@ -611,23 +611,23 @@ wire [15:0] rgb565_w = {pixel_r_w[7:3], pixel_g_w[7:2], pixel_b_w[7:3]};
 // Write Combine
 //-----------------------------------------------------------------
 reg [15:0] pixel_q;
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     pixel_q  <= 16'b0;
 else if (pixel_valid_w)
     pixel_q  <= rgb565_w;
 
 reg pixel_idx_q;
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     pixel_idx_q  <= 1'b0;
 else if (pixel_valid_w)
     pixel_idx_q  <= ~pixel_x_w[0];
 
 reg [31:0] pixel_offset_q;
 
-always @ (posedge clk_i or posedge rst_i)
-if (rst_i)
+always @ (posedge clk or posedge rst)
+if (rst)
     pixel_offset_q  <= 32'b0;
 else
     pixel_offset_q  <= {15'b0, pixel_w_w, 1'b0} * {16'b0,pixel_y_w};
@@ -647,8 +647,8 @@ wire        fifo_data_push_w = pixel_ready_w & (state_q == STATE_ACTIVE) & fifo_
 jpeg_decoder_output_fifo
 u_fifo_addr_out
 (
-     .clk_i(clk_i)
-    ,.rst_i(rst_i)
+     .clk_i(clk)
+    ,.rst_i(rst)
 
     ,.push_i(fifo_addr_push_w)
     ,.data_in_i(pixel_addr_w)
@@ -664,8 +664,8 @@ u_fifo_addr_out
 jpeg_decoder_output_fifo
 u_fifo_data_out
 (
-     .clk_i(clk_i)
-    ,.rst_i(rst_i)
+     .clk_i(clk)
+    ,.rst_i(rst)
 
     ,.push_i(fifo_data_push_w)
     ,.data_in_i(pixel_data_w)
