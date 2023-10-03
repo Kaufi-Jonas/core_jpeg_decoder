@@ -48,52 +48,52 @@ module jpeg_decoder
     // Inputs
      input          clk_i
     ,input          rst_i
-    ,input          cfg_awvalid_i
-    ,input  [31:0]  cfg_awaddr_i
-    ,input          cfg_wvalid_i
-    ,input  [31:0]  cfg_wdata_i
-    ,input  [3:0]   cfg_wstrb_i
-    ,input          cfg_bready_i
-    ,input          cfg_arvalid_i
-    ,input  [31:0]  cfg_araddr_i
-    ,input          cfg_rready_i
-    ,input          outport_awready_i
-    ,input          outport_wready_i
-    ,input          outport_bvalid_i
-    ,input  [1:0]   outport_bresp_i
-    ,input  [3:0]   outport_bid_i
-    ,input          outport_arready_i
-    ,input          outport_rvalid_i
-    ,input  [31:0]  outport_rdata_i
-    ,input  [1:0]   outport_rresp_i
-    ,input  [3:0]   outport_rid_i
-    ,input          outport_rlast_i
+    ,input          s_axil_awvalid
+    ,input  [31:0]  s_axil_awaddr
+    ,input          s_axil_wvalid
+    ,input  [31:0]  s_axil_wdata
+    ,input  [3:0]   s_axil_wstrb
+    ,input          s_axil_bready
+    ,input          s_axil_arvalid
+    ,input  [31:0]  s_axil_araddr
+    ,input          s_axil_rready
+    ,input          m_axi_awready
+    ,input          m_axi_wready
+    ,input          m_axi_bvalid
+    ,input  [1:0]   m_axi_bresp
+    ,input  [3:0]   m_axi_bid
+    ,input          m_axi_arready
+    ,input          m_axi_rvalid
+    ,input  [31:0]  m_axi_rdata
+    ,input  [1:0]   m_axi_rresp
+    ,input  [3:0]   m_axi_rid
+    ,input          m_axi_rlast
 
     // Outputs
-    ,output         cfg_awready_o
-    ,output         cfg_wready_o
-    ,output         cfg_bvalid_o
-    ,output [1:0]   cfg_bresp_o
-    ,output         cfg_arready_o
-    ,output         cfg_rvalid_o
-    ,output [31:0]  cfg_rdata_o
-    ,output [1:0]   cfg_rresp_o
-    ,output         outport_awvalid_o
-    ,output [31:0]  outport_awaddr_o
-    ,output [3:0]   outport_awid_o
-    ,output [7:0]   outport_awlen_o
-    ,output [1:0]   outport_awburst_o
-    ,output         outport_wvalid_o
-    ,output [31:0]  outport_wdata_o
-    ,output [3:0]   outport_wstrb_o
-    ,output         outport_wlast_o
-    ,output         outport_bready_o
-    ,output         outport_arvalid_o
-    ,output [31:0]  outport_araddr_o
-    ,output [3:0]   outport_arid_o
-    ,output [7:0]   outport_arlen_o
-    ,output [1:0]   outport_arburst_o
-    ,output         outport_rready_o
+    ,output         s_axil_awready
+    ,output         s_axil_wready
+    ,output         s_axil_bvalid
+    ,output [1:0]   s_axil_bresp
+    ,output         s_axil_arready
+    ,output         s_axil_rvalid
+    ,output [31:0]  s_axil_rdata
+    ,output [1:0]   s_axil_rresp
+    ,output         m_axi_awvalid
+    ,output [31:0]  m_axi_awaddr
+    ,output [3:0]   m_axi_awid
+    ,output [7:0]   m_axi_awlen
+    ,output [1:0]   m_axi_awburst
+    ,output         m_axi_wvalid
+    ,output [31:0]  m_axi_wdata
+    ,output [3:0]   m_axi_wstrb
+    ,output         m_axi_wlast
+    ,output         m_axi_bready
+    ,output         m_axi_arvalid
+    ,output [31:0]  m_axi_araddr
+    ,output [3:0]   m_axi_arid
+    ,output [7:0]   m_axi_arlen
+    ,output [1:0]   m_axi_arburst
+    ,output         m_axi_rready
 );
 
 //-----------------------------------------------------------------
@@ -105,13 +105,13 @@ reg awvalid_q;
 // Data but no data ready
 reg wvalid_q;
 
-wire wr_cmd_accepted_w  = (cfg_awvalid_i && cfg_awready_o) || awvalid_q;
-wire wr_data_accepted_w = (cfg_wvalid_i  && cfg_wready_o)  || wvalid_q;
+wire wr_cmd_accepted_w  = (s_axil_awvalid && s_axil_awready) || awvalid_q;
+wire wr_data_accepted_w = (s_axil_wvalid  && s_axil_wready)  || wvalid_q;
 
 always @ (posedge clk_i or posedge rst_i)
 if (rst_i)
     awvalid_q <= 1'b0;
-else if (cfg_awvalid_i && cfg_awready_o && !wr_data_accepted_w)
+else if (s_axil_awvalid && s_axil_awready && !wr_data_accepted_w)
     awvalid_q <= 1'b1;
 else if (wr_data_accepted_w)
     awvalid_q <= 1'b0;
@@ -119,7 +119,7 @@ else if (wr_data_accepted_w)
 always @ (posedge clk_i or posedge rst_i)
 if (rst_i)
     wvalid_q <= 1'b0;
-else if (cfg_wvalid_i && cfg_wready_o && !wr_cmd_accepted_w)
+else if (s_axil_wvalid && s_axil_wready && !wr_cmd_accepted_w)
     wvalid_q <= 1'b1;
 else if (wr_cmd_accepted_w)
     wvalid_q <= 1'b0;
@@ -132,10 +132,10 @@ reg [7:0] wr_addr_q;
 always @ (posedge clk_i or posedge rst_i)
 if (rst_i)
     wr_addr_q <= 8'b0;
-else if (cfg_awvalid_i && cfg_awready_o)
-    wr_addr_q <= cfg_awaddr_i[7:0];
+else if (s_axil_awvalid && s_axil_awready)
+    wr_addr_q <= s_axil_awaddr[7:0];
 
-wire [7:0] wr_addr_w = awvalid_q ? wr_addr_q : cfg_awaddr_i[7:0];
+wire [7:0] wr_addr_w = awvalid_q ? wr_addr_q : s_axil_awaddr[7:0];
 
 //-----------------------------------------------------------------
 // Retime write data
@@ -145,21 +145,21 @@ reg [31:0] wr_data_q;
 always @ (posedge clk_i or posedge rst_i)
 if (rst_i)
     wr_data_q <= 32'b0;
-else if (cfg_wvalid_i && cfg_wready_o)
-    wr_data_q <= cfg_wdata_i;
+else if (s_axil_wvalid && s_axil_wready)
+    wr_data_q <= s_axil_wdata;
 
 //-----------------------------------------------------------------
 // Request Logic
 //-----------------------------------------------------------------
-wire read_en_w  = cfg_arvalid_i & cfg_arready_o;
+wire read_en_w  = s_axil_arvalid & s_axil_arready;
 wire write_en_w = wr_cmd_accepted_w && wr_data_accepted_w;
 
 //-----------------------------------------------------------------
 // Accept Logic
 //-----------------------------------------------------------------
-assign cfg_arready_o = ~cfg_rvalid_o;
-assign cfg_awready_o = ~cfg_bvalid_o && ~cfg_arvalid_i && ~awvalid_q;
-assign cfg_wready_o  = ~cfg_bvalid_o && ~cfg_arvalid_i && ~wvalid_q;
+assign s_axil_arready = ~s_axil_rvalid;
+assign s_axil_awready = ~s_axil_bvalid && ~s_axil_arvalid && ~awvalid_q;
+assign s_axil_wready  = ~s_axil_bvalid && ~s_axil_arvalid && ~wvalid_q;
 
 
 //-----------------------------------------------------------------
@@ -182,7 +182,7 @@ always @ (posedge clk_i or posedge rst_i)
 if (rst_i)
     jpeg_ctrl_start_q <= 1'd`JPEG_CTRL_START_DEFAULT;
 else if (write_en_w && (wr_addr_w[7:0] == `JPEG_CTRL))
-    jpeg_ctrl_start_q <= cfg_wdata_i[`JPEG_CTRL_START_R];
+    jpeg_ctrl_start_q <= s_axil_wdata[`JPEG_CTRL_START_R];
 else
     jpeg_ctrl_start_q <= 1'd`JPEG_CTRL_START_DEFAULT;
 
@@ -196,7 +196,7 @@ always @ (posedge clk_i or posedge rst_i)
 if (rst_i)
     jpeg_ctrl_abort_q <= 1'd`JPEG_CTRL_ABORT_DEFAULT;
 else if (write_en_w && (wr_addr_w[7:0] == `JPEG_CTRL))
-    jpeg_ctrl_abort_q <= cfg_wdata_i[`JPEG_CTRL_ABORT_R];
+    jpeg_ctrl_abort_q <= s_axil_wdata[`JPEG_CTRL_ABORT_R];
 else
     jpeg_ctrl_abort_q <= 1'd`JPEG_CTRL_ABORT_DEFAULT;
 
@@ -210,7 +210,7 @@ always @ (posedge clk_i or posedge rst_i)
 if (rst_i)
     jpeg_ctrl_length_q <= 24'd`JPEG_CTRL_LENGTH_DEFAULT;
 else if (write_en_w && (wr_addr_w[7:0] == `JPEG_CTRL))
-    jpeg_ctrl_length_q <= cfg_wdata_i[`JPEG_CTRL_LENGTH_R];
+    jpeg_ctrl_length_q <= s_axil_wdata[`JPEG_CTRL_LENGTH_R];
 
 wire [23:0]  jpeg_ctrl_length_out_w = jpeg_ctrl_length_q;
 
@@ -249,7 +249,7 @@ always @ (posedge clk_i or posedge rst_i)
 if (rst_i)
     jpeg_src_addr_q <= 32'd`JPEG_SRC_ADDR_DEFAULT;
 else if (write_en_w && (wr_addr_w[7:0] == `JPEG_SRC))
-    jpeg_src_addr_q <= cfg_wdata_i[`JPEG_SRC_ADDR_R];
+    jpeg_src_addr_q <= s_axil_wdata[`JPEG_SRC_ADDR_R];
 
 wire [31:0]  jpeg_src_addr_out_w = jpeg_src_addr_q;
 
@@ -274,7 +274,7 @@ always @ (posedge clk_i or posedge rst_i)
 if (rst_i)
     jpeg_dst_addr_q <= 32'd`JPEG_DST_ADDR_DEFAULT;
 else if (write_en_w && (wr_addr_w[7:0] == `JPEG_DST))
-    jpeg_dst_addr_q <= cfg_wdata_i[`JPEG_DST_ADDR_R];
+    jpeg_dst_addr_q <= s_axil_wdata[`JPEG_DST_ADDR_R];
 
 wire [31:0]  jpeg_dst_addr_out_w = jpeg_dst_addr_q;
 
@@ -291,7 +291,7 @@ always @ *
 begin
     data_r = 32'b0;
 
-    case (cfg_araddr_i[7:0])
+    case (s_axil_araddr[7:0])
 
     `JPEG_CTRL:
     begin
@@ -324,10 +324,10 @@ if (rst_i)
     rvalid_q <= 1'b0;
 else if (read_en_w)
     rvalid_q <= 1'b1;
-else if (cfg_rready_i)
+else if (s_axil_rready)
     rvalid_q <= 1'b0;
 
-assign cfg_rvalid_o = rvalid_q;
+assign s_axil_rvalid = rvalid_q;
 
 //-----------------------------------------------------------------
 // Retime read response
@@ -337,11 +337,11 @@ reg [31:0] rd_data_q;
 always @ (posedge clk_i or posedge rst_i)
 if (rst_i)
     rd_data_q <= 32'b0;
-else if (!cfg_rvalid_o || cfg_rready_i)
+else if (!s_axil_rvalid || s_axil_rready)
     rd_data_q <= data_r;
 
-assign cfg_rdata_o = rd_data_q;
-assign cfg_rresp_o = 2'b0;
+assign s_axil_rdata = rd_data_q;
+assign s_axil_rresp = 2'b0;
 
 //-----------------------------------------------------------------
 // BVALID
@@ -353,11 +353,11 @@ if (rst_i)
     bvalid_q <= 1'b0;
 else if (write_en_w)
     bvalid_q <= 1'b1;
-else if (cfg_bready_i)
+else if (s_axil_bready)
     bvalid_q <= 1'b0;
 
-assign cfg_bvalid_o = bvalid_q;
-assign cfg_bresp_o  = 2'b0;
+assign s_axil_bvalid = bvalid_q;
+assign s_axil_bresp  = 2'b0;
 
 
 
@@ -464,12 +464,12 @@ if (rst_i)
     allocated_q  <= 16'b0;
 else if (jpeg_ctrl_abort_out_w || (state_q == STATE_DRAIN))
     allocated_q  <= 16'b0;
-else if (outport_arvalid_o && outport_arready_i)
+else if (m_axi_arvalid && m_axi_arready)
 begin
     if (jpeg_valid_w && jpeg_accept_w)
-        allocated_q  <= allocated_q + {8'b0, outport_arlen_o};
+        allocated_q  <= allocated_q + {8'b0, m_axi_arlen};
     else
-        allocated_q  <= allocated_q + {8'b0, outport_arlen_o} + 16'd1;
+        allocated_q  <= allocated_q + {8'b0, m_axi_arlen} + 16'd1;
 end
 else if (jpeg_valid_w && jpeg_accept_w)
     allocated_q  <= allocated_q - 16'd1;
@@ -478,7 +478,7 @@ else if (jpeg_valid_w && jpeg_accept_w)
 // AXI Fetch
 //-----------------------------------------------------------------
 // Calculate number of bytes being fetch
-wire [31:0] fetch_bytes_w = {22'b0, (outport_arlen_o + 8'd1), 2'b0};
+wire [31:0] fetch_bytes_w = {22'b0, (m_axi_arlen + 8'd1), 2'b0};
 
 reg         arvalid_q;
 reg [31:0]  araddr_q;
@@ -495,7 +495,7 @@ else if (jpeg_ctrl_start_out_w)
     remaining_q <= {8'b0, jpeg_ctrl_length_out_w};
 else if (jpeg_ctrl_abort_out_w)
     remaining_q <= 32'b0;
-else if (outport_arvalid_o && outport_arready_i)
+else if (m_axi_arvalid && m_axi_arready)
 begin
     if (remaining_q > fetch_bytes_w)
         remaining_q <= remaining_q - fetch_bytes_w;
@@ -506,17 +506,17 @@ end
 always @ (posedge clk_i or posedge rst_i)
 if (rst_i)
     arvalid_q <= 1'b0;
-else if (outport_arvalid_o && outport_arready_i)
+else if (m_axi_arvalid && m_axi_arready)
     arvalid_q <= 1'b0;
-else if (!outport_arvalid_o && fifo_space_w && remaining_q != 32'b0)
+else if (!m_axi_arvalid && fifo_space_w && remaining_q != 32'b0)
     arvalid_q <= 1'b1;
 
-assign outport_arvalid_o = arvalid_q;
+assign m_axi_arvalid = arvalid_q;
 
 always @ (posedge clk_i or posedge rst_i)
 if (rst_i)
     araddr_q <= 32'b0;
-else if (outport_arvalid_o && outport_arready_i)
+else if (m_axi_arvalid && m_axi_arready)
     araddr_q  <= araddr_q + fetch_bytes_w;
 else if (jpeg_ctrl_start_out_w)
     araddr_q <= jpeg_src_addr_out_w;
@@ -529,12 +529,12 @@ if (rst_i)
 else
     arlen_q <= max_words_w - 1;
 
-assign outport_araddr_o  = araddr_q;
-assign outport_arburst_o = 2'b01;
-assign outport_arid_o    = AXI_ID;
-assign outport_arlen_o   = arlen_q;
+assign m_axi_araddr  = araddr_q;
+assign m_axi_arburst = 2'b01;
+assign m_axi_arid    = AXI_ID;
+assign m_axi_arlen   = arlen_q;
 
-assign outport_rready_o  = 1'b1;
+assign m_axi_rready  = 1'b1;
 
 //-----------------------------------------------------------------
 // JPEG fetch FIFO
@@ -549,8 +549,8 @@ u_fifo_in
 
     ,.flush_i(jpeg_ctrl_abort_out_w || (state_q == STATE_DRAIN))
 
-    ,.push_i(outport_rvalid_i)
-    ,.data_in_i(outport_rdata_i)
+    ,.push_i(m_axi_rvalid)
+    ,.data_in_i(m_axi_rdata)
     ,.accept_o()
 
     ,.valid_o(fifo_jpeg_valid_w)
@@ -654,9 +654,9 @@ u_fifo_addr_out
     ,.data_in_i(pixel_addr_w)
     ,.accept_o(fifo_accept_addr_in_w)
 
-    ,.valid_o(outport_awvalid_o)
-    ,.data_out_o(outport_awaddr_o)
-    ,.pop_i(outport_awready_i)
+    ,.valid_o(m_axi_awvalid)
+    ,.data_out_o(m_axi_awaddr)
+    ,.pop_i(m_axi_awready)
 
     ,.level_o(fifo_addr_level_w)
 );
@@ -671,9 +671,9 @@ u_fifo_data_out
     ,.data_in_i(pixel_data_w)
     ,.accept_o(fifo_accept_data_in_w)
 
-    ,.valid_o(outport_wvalid_o)
-    ,.data_out_o(outport_wdata_o)
-    ,.pop_i(outport_wready_i)
+    ,.valid_o(m_axi_wvalid)
+    ,.data_out_o(m_axi_wdata)
+    ,.pop_i(m_axi_wready)
 
     ,.level_o(fifo_data_level_w)
 );
@@ -683,13 +683,13 @@ assign fifo_accept_in_w = fifo_accept_addr_in_w & fifo_accept_data_in_w;
 //-----------------------------------------------------------------
 // Constants
 //-----------------------------------------------------------------
-assign outport_awlen_o   = 8'd0;  // Singles (not efficient!)
-assign outport_awburst_o = 2'b01; // INCR
-assign outport_awid_o    = AXI_ID;
-assign outport_wstrb_o   = 4'hF;
-assign outport_wlast_o   = 1'b1;
+assign m_axi_awlen   = 8'd0;  // Singles (not efficient!)
+assign m_axi_awburst = 2'b01; // INCR
+assign m_axi_awid    = AXI_ID;
+assign m_axi_wstrb   = 4'hF;
+assign m_axi_wlast   = 1'b1;
 
-assign outport_bready_o  = 1'b1;
+assign m_axi_bready  = 1'b1;
 
 
 endmodule
