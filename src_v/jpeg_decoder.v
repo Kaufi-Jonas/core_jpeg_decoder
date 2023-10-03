@@ -39,7 +39,8 @@ module jpeg_decoder
 // Params
 //-----------------------------------------------------------------
 #(
-     parameter AXI_ID           = 0
+     parameter AXI_ID           = 0,
+     parameter SUPPORT_WRITABLE_DHT = 0
 )
 //-----------------------------------------------------------------
 // Ports
@@ -578,7 +579,7 @@ wire        fifo_accept_in_w;
 
 wire        core_accept_w;
 
-jpeg_core
+jpeg_core #( .SUPPORT_WRITABLE_DHT(SUPPORT_WRITABLE_DHT) )
 u_core
 (
      .clk_i(clk)
