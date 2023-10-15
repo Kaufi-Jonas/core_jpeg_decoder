@@ -40,15 +40,16 @@ module jpeg_decoder
 //-----------------------------------------------------------------
 #(
      parameter AXI_ID           = 0,
-     parameter SUPPORT_WRITABLE_DHT = 0
+     parameter SUPPORT_WRITABLE_DHT = 0,
+     parameter NUM_DECODERS = 1
 )
 //-----------------------------------------------------------------
 // Ports
 //-----------------------------------------------------------------
 (
     // Inputs
-     input          clk
-    ,input          rst
+     input          clk,
+     input          rst
     ,input          s_axil_awvalid
     ,input  [31:0]  s_axil_awaddr
     ,input          s_axil_wvalid
@@ -69,6 +70,8 @@ module jpeg_decoder
     ,input  [1:0]   m_axi_rresp
     ,input  [3:0]   m_axi_rid
     ,input          m_axi_rlast
+
+    ,input  [3:0]   output_mux
 
     // Outputs
     ,output         s_axil_awready
@@ -375,7 +378,7 @@ wire [10:0] fifo_addr_level_w;
 wire [10:0] fifo_data_level_w;
 
 reg         core_busy_q;
-wire        core_idle_w;
+wire [NUM_DECODERS-1:0] core_idle_w;
 reg [31:0]  remaining_q;
 reg [15:0]  allocated_q;
 
@@ -409,7 +412,7 @@ begin
     end
     STATE_ACTIVE:
     begin
-        if (core_busy_q && core_idle_w)
+        if (core_busy_q && core_idle_w[output_mux])
             next_state_r  = STATE_DRAIN;
     end
     STATE_DRAIN:
@@ -452,9 +455,9 @@ else if (state_q == STATE_ACTIVE && next_state_r == STATE_DRAIN)
 always @ (posedge clk or posedge rst)
 if (rst)
     core_busy_q  <= 1'b0;
-else if (state_q == STATE_ACTIVE && !core_idle_w)
+else if (state_q == STATE_ACTIVE && !core_idle_w[output_mux])
     core_busy_q  <= 1'b1;
-else if (state_q == STATE_ACTIVE && core_idle_w)
+else if (state_q == STATE_ACTIVE && core_idle_w[output_mux])
     core_busy_q  <= 1'b0;
 
 //-----------------------------------------------------------------
@@ -566,47 +569,53 @@ assign jpeg_valid_w = fifo_jpeg_valid_w & (state_q == STATE_ACTIVE);
 //-----------------------------------------------------------------
 // Decoder core
 //-----------------------------------------------------------------
-wire [15:0] pixel_x_w;
-wire [15:0] pixel_y_w;
-wire [15:0] pixel_w_w;
-wire [15:0] pixel_h_w;
+wire [15:0] pixel_x_w [NUM_DECODERS-1:0];
+wire [15:0] pixel_y_w [NUM_DECODERS-1:0];
+wire [15:0] pixel_w_w [NUM_DECODERS-1:0];
+wire [15:0] pixel_h_w [NUM_DECODERS-1:0];
 
-wire        pixel_valid_w;
-wire [7:0]  pixel_r_w;
-wire [7:0]  pixel_g_w;
-wire [7:0]  pixel_b_w;
+wire        pixel_valid_w [NUM_DECODERS-1:0];
+wire [7:0]  pixel_r_w [NUM_DECODERS-1:0];
+wire [7:0]  pixel_g_w [NUM_DECODERS-1:0];
+wire [7:0]  pixel_b_w [NUM_DECODERS-1:0];
 wire        fifo_accept_in_w;
 
-wire        core_accept_w;
+wire        core_accept_w [NUM_DECODERS-1:0];
 
-jpeg_core #( .SUPPORT_WRITABLE_DHT(SUPPORT_WRITABLE_DHT) )
-u_core
-(
-     .clk_i(clk)
-    ,.rst_i(~core_active_q)
+generate
+    for (genvar i = 0; i < NUM_DECODERS; i = i + 1) begin
+        (* KEEP_HIERARCHY = "TRUE" *)  // prevent this from being optimized out
+        jpeg_core #( .SUPPORT_WRITABLE_DHT(SUPPORT_WRITABLE_DHT) )
+            u_core
+            (
+                .clk_i(clk)
+                ,.rst_i(~core_active_q)
 
-    ,.inport_valid_i(jpeg_valid_w)
-    ,.inport_data_i(jpeg_data_w)
-    ,.inport_strb_i(4'hF)
-    ,.inport_last_i(1'b0)
-    ,.inport_accept_o(core_accept_w)
+                ,.inport_valid_i(jpeg_valid_w)
+                ,.inport_data_i(jpeg_data_w)
+                ,.inport_strb_i(4'hF)
+                ,.inport_last_i(1'b0)
+                ,.inport_accept_o(core_accept_w[i])
 
-    ,.outport_valid_o(pixel_valid_w)
-    ,.outport_width_o(pixel_w_w)
-    ,.outport_height_o(pixel_h_w)
-    ,.outport_pixel_x_o(pixel_x_w)
-    ,.outport_pixel_y_o(pixel_y_w)
-    ,.outport_pixel_r_o(pixel_r_w)
-    ,.outport_pixel_g_o(pixel_g_w)
-    ,.outport_pixel_b_o(pixel_b_w)
-    ,.outport_accept_i(fifo_accept_in_w)
+                ,.outport_valid_o(pixel_valid_w[i])
+                ,.outport_width_o(pixel_w_w[i])
+                ,.outport_height_o(pixel_h_w[i])
+                ,.outport_pixel_x_o(pixel_x_w[i])
+                ,.outport_pixel_y_o(pixel_y_w[i])
+                ,.outport_pixel_r_o(pixel_r_w[i])
+                ,.outport_pixel_g_o(pixel_g_w[i])
+                ,.outport_pixel_b_o(pixel_b_w[i])
+                ,.outport_accept_i(fifo_accept_in_w)
 
-    ,.idle_o(core_idle_w)
-);
+                ,.idle_o(core_idle_w[i])
+            );
 
-assign jpeg_accept_w = core_accept_w & (state_q == STATE_ACTIVE);
+    end
+endgenerate
 
-wire [15:0] rgb565_w = {pixel_r_w[7:3], pixel_g_w[7:2], pixel_b_w[7:3]};
+assign jpeg_accept_w = core_accept_w[output_mux] & (state_q == STATE_ACTIVE);
+
+wire [15:0] rgb565_w = {pixel_r_w[output_mux][7:3], pixel_g_w[output_mux][7:2], pixel_b_w[output_mux][7:3]};
 
 //-----------------------------------------------------------------
 // Write Combine
@@ -615,15 +624,15 @@ reg [15:0] pixel_q;
 always @ (posedge clk or posedge rst)
 if (rst)
     pixel_q  <= 16'b0;
-else if (pixel_valid_w)
+else if (pixel_valid_w[output_mux])
     pixel_q  <= rgb565_w;
 
 reg pixel_idx_q;
 always @ (posedge clk or posedge rst)
 if (rst)
     pixel_idx_q  <= 1'b0;
-else if (pixel_valid_w)
-    pixel_idx_q  <= ~pixel_x_w[0];
+else if (pixel_valid_w[output_mux])
+    pixel_idx_q  <= ~pixel_x_w[output_mux][0];
 
 reg [31:0] pixel_offset_q;
 
@@ -631,10 +640,10 @@ always @ (posedge clk or posedge rst)
 if (rst)
     pixel_offset_q  <= 32'b0;
 else
-    pixel_offset_q  <= {15'b0, pixel_w_w, 1'b0} * {16'b0,pixel_y_w};
+    pixel_offset_q  <= {15'b0, pixel_w_w[output_mux], 1'b0} * {16'b0,pixel_y_w[output_mux]};
 
-wire [31:0] pixel_addr_w  = jpeg_dst_addr_out_w + pixel_offset_q + {15'b0, pixel_x_w[15:1], 2'b0};
-wire        pixel_ready_w = pixel_idx_q && pixel_valid_w;
+wire [31:0] pixel_addr_w  = jpeg_dst_addr_out_w + pixel_offset_q + {15'b0, pixel_x_w[output_mux][15:1], 2'b0};
+wire        pixel_ready_w = pixel_idx_q && pixel_valid_w[output_mux];
 wire [31:0] pixel_data_w  = {rgb565_w, pixel_q};
 
 //-----------------------------------------------------------------
